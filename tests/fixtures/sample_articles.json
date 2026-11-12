@@ -1,0 +1,73 @@
+[
+  {
+    "headline": "Why Nvidia's stock is dodging the AI credit scare crushing Broadcom and Oracle",
+    "source": "MarketWatch Breaking News",
+    "author": null,
+    "publishedDate": "2026-10-10T20:06:24.000Z",
+    "articleLink": "https://www.marketwatch.com/story/nvidia-ai-credit-scare?utm_source=rss",
+    "summary": "Nvidia has held up better than other AI names as credit concerns rise.",
+    "categories": [],
+    "imageUrl": "https://example.com/nvda.jpg",
+    "tickers": ["NVDA", "AVGO", "ORCL"],
+    "companyDetails": [
+      {
+        "ticker": "NVDA",
+        "name": "Nvidia Corp.",
+        "exchange": "NASDAQ",
+        "sector": "Technology"
+      }
+    ],
+    "eventTypes": ["macro"],
+    "sentimentScore": 0.1,
+    "sentimentLabel": "neutral",
+    "dedupeKey": "https://www.marketwatch.com/story/nvidia-ai-credit-scare",
+    "sourceFeed": "https://feeds.content.dowjones.io/public/rss/mw_bulletins",
+    "searchQuery": null,
+    "fetchedAt": "2026-10-11T07:30:00.000Z"
+  },
+  {
+    "headline": "Apple reports quarterly earnings beat and raises guidance",
+    "source": "CNBC Investing",
+    "author": "Jane Doe",
+    "publishedDate": "2026-10-09T15:00:00.000Z",
+    "articleLink": "https://www.cnbc.com/2026/10/09/apple-earnings.html",
+    "summary": "Apple Inc. posted stronger-than-expected EPS and lifted full-year guidance.",
+    "categories": ["Earnings"],
+    "imageUrl": null,
+    "tickers": ["AAPL"],
+    "companyDetails": [
+      {
+        "ticker": "AAPL",
+        "name": "Apple Inc.",
+        "exchange": "NASDAQ",
+        "sector": "Technology"
+      }
+    ],
+    "eventTypes": ["earnings", "guidance"],
+    "sentimentScore": 0.6,
+    "sentimentLabel": "positive",
+    "dedupeKey": "https://www.cnbc.com/2026/10/09/apple-earnings.html",
+    "sourceFeed": "https://www.cnbc.com/id/15839069/device/rss/rss.html",
+    "searchQuery": null,
+    "fetchedAt": "2026-10-11T07:30:00.000Z"
+  },
+  {
+    "headline": "Acme Corp appoints new CEO after surprise resignation",
+    "source": "Bloomberg Markets",
+    "author": null,
+    "publishedDate": "2026-10-08T12:00:00.000Z",
+    "articleLink": "https://www.bloomberg.com/news/articles/2026-10-08/acme-ceo",
+    "summary": "The board appointed a veteran executive after the CEO stepped down.",
+    "categories": [],
+    "imageUrl": null,
+    "tickers": [],
+    "companyDetails": [],
+    "eventTypes": ["executive_change"],
+    "sentimentScore": -0.1,
+    "sentimentLabel": "neutral",
+    "dedupeKey": "https://www.bloomberg.com/news/articles/2026-10-08/acme-ceo",
+    "sourceFeed": "https://www.bloomberg.com/feeds/markets/news.rss",
+    "searchQuery": null,
+    "fetchedAt": "2026-10-11T07:30:00.000Z"
+  }
+]

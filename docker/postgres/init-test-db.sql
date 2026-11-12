@@ -1,0 +1,2 @@
+CREATE DATABASE fnip_test;
+GRANT ALL PRIVILEGES ON DATABASE fnip_test TO fnip;

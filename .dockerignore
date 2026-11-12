@@ -1,0 +1,12 @@
+.venv
+.git
+.pytest_cache
+.ruff_cache
+__pycache__
+.coverage
+htmlcov
+.env
+.env.local
+*.pyc
+.DS_Store
+tests
