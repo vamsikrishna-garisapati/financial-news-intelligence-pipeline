@@ -3,10 +3,14 @@
 [![CI](https://github.com/vamsikrishna-garisapati/financial-news-intelligence-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/vamsikrishna-garisapati/financial-news-intelligence-pipeline/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 
-Python pipeline that collects financial news via the Apify Actor
-[`vamsi-krishna/stock-market-news-collector`](https://apify.com/vamsi-krishna/stock-market-news-collector),
-normalizes and deduplicates articles, stores them in PostgreSQL, and exposes
-search/analytics APIs with FastAPI.
+**Financial News Intelligence Pipeline** is a Python data-engineering project that
+collects stock market news with Apify, stores it in PostgreSQL, and exposes a
+FastAPI news search and analytics API for tickers, categories, and sources.
+
+It integrates the Apify Actor
+[`vamsi-krishna/stock-market-news-collector`](https://apify.com/vamsi-krishna/stock-market-news-collector)
+to ingest financial / ticker news, then normalizes, deduplicates, classifies, and
+serves results for dashboards, alerts, and research workflows.
 
 ## Disclaimer
 
