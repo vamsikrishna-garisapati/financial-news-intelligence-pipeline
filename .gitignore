@@ -13,13 +13,24 @@ venv/
 .pytest_cache/
 .ruff_cache/
 .coverage
+.coverage.*
 htmlcov/
 .mypy_cache/
+.direnv/
 
 # Environment / secrets
 .env
-.env.local
+.env.*
+!.env.example
 *.pem
+*.key
+credentials*.json
+secrets*.json
+
+# Local data dumps
+*.sql.gz
+*.dump
+backups/
 
 # IDE / OS
 .idea/

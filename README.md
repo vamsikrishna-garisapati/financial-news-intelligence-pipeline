@@ -1,12 +1,25 @@
 # Financial News Intelligence Pipeline
 
+[![CI](https://github.com/vamsikrishna-garisapati/financial-news-intelligence-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/vamsikrishna-garisapati/financial-news-intelligence-pipeline/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+
 Python pipeline that collects financial news via the Apify Actor
 [`vamsi-krishna/stock-market-news-collector`](https://apify.com/vamsi-krishna/stock-market-news-collector),
 normalizes and deduplicates articles, stores them in PostgreSQL, and exposes
 search/analytics APIs with FastAPI.
 
+## Disclaimer
+
 Sentiment labels and category tags are **best-effort triage signals only**.
-They are **not** investment advice or verified financial signals.
+They are **not** investment advice or verified financial signals. This project
+does not generate trading recommendations.
+
+## Security and cost notes
+
+- Never commit `APIFY_TOKEN`, `.env`, or other secrets. See [SECURITY.md](SECURITY.md).
+- Live Apify collection is **pay-per-event** (roughly ~$0.0025/article on the free tier). Keep `maxItems` small while testing.
+- Local Docker Postgres uses demo credentials `fnip` / `fnip` — local development only.
+- The HTTP API is **unauthenticated**. Do not expose it on a public network without your own auth and TLS.
 
 ## Architecture
 
@@ -55,7 +68,20 @@ docker-compose.yml
 .env.example
 ```
 
-## Installation
+## Public clone quickstart
+
+```bash
+git clone https://github.com/vamsikrishna-garisapati/financial-news-intelligence-pipeline.git
+cd financial-news-intelligence-pipeline
+cp .env.example .env
+# optional: set APIFY_TOKEN in .env for live collection
+
+docker compose up --build
+```
+
+API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+## Installation (local UV)
 
 ```bash
 cp .env.example .env
@@ -70,7 +96,7 @@ uv sync
 |---|---|---|
 | `APP_ENV` | `development` | Application environment label |
 | `LOG_LEVEL` | `INFO` | Logging level |
-| `DATABASE_URL` | `postgresql+psycopg://fnip:fnip@localhost:5433/fnip` | SQLAlchemy URL (host port **5433** to avoid local Postgres conflicts) |
+| `DATABASE_URL` | `postgresql+psycopg://fnip:fnip@localhost:5433/fnip` | SQLAlchemy URL (host port **5433**, localhost-bound) |
 | `APIFY_TOKEN` | _(empty)_ | Apify API token (required for live collection) |
 | `APIFY_ACTOR_ID` | `vamsi-krishna/stock-market-news-collector` | Actor to run |
 | `APIFY_TIMEOUT_SECS` | `300` | Actor run timeout |
@@ -83,10 +109,12 @@ uv sync
 
 The Python Apify client needs an explicit token; it does not read the CLI keychain automatically.
 
+Compose reads `APIFY_TOKEN` (and related vars) from your shell environment or from a local `.env` file Docker Compose auto-loads for variable substitution. Do not commit real tokens.
+
 ## Docker setup
 
-PostgreSQL is published on host port **5433** (`5433:5432`) so it does not collide
-with a local Postgres on `5432`.
+PostgreSQL is published on **localhost:5433** only (`127.0.0.1:5433:5432`) so it
+does not collide with a local Postgres on `5432` and is not exposed on all interfaces.
 
 ```bash
 cp .env.example .env
@@ -119,7 +147,7 @@ uv run alembic revision --autogenerate -m "describe change"
 ## How to run a collection
 
 1. Ensure Postgres is up and migrations are applied.
-2. Set `APIFY_TOKEN` in `.env`.
+2. Set `APIFY_TOKEN` in `.env` (or export it in your shell for Compose).
 3. Start the API.
 4. Trigger a run:
 
@@ -144,9 +172,6 @@ curl -s http://localhost:8000/collection-runs/<run_id>
 
 `POST /collection-runs` returns `202` immediately. Collection continues in a
 FastAPI background task (no Redis/Celery in this MVP).
-
-Actor pricing is pay-per-event (~$0.0025/article on the free tier). Keep
-`maxItems` small while testing.
 
 ## API documentation
 
@@ -275,14 +300,11 @@ Tests mock Apify responses and **never** execute paid Actor runs.
 | Migration errors | Ensure DB is healthy: `docker compose ps`, then `uv run alembic upgrade head` |
 | Port 8000 in use | Run Uvicorn with `--port 8001` |
 
-## Contribution guidelines
+## Contributing
 
-1. Fork/branch from `main`.
-2. Keep Actor input/output fields aligned with the published Actor schema — do not invent fields.
-3. Add/adjust tests for behavior changes.
-4. Run `uv run ruff check app tests` and `uv run pytest` before opening a PR.
-5. Do not commit secrets (`.env`, tokens, credentials).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT
+No open-source license is granted. This repository is published for demonstration
+and portfolio viewing. All rights reserved unless a license is added later.

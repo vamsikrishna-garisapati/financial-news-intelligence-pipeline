@@ -2,11 +2,12 @@ services:
   db:
     image: postgres:16-alpine
     environment:
+      # Local Docker demo credentials only — not for production
       POSTGRES_USER: fnip
       POSTGRES_PASSWORD: fnip
       POSTGRES_DB: fnip
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
@@ -20,10 +21,14 @@ services:
     build: .
     ports:
       - "8000:8000"
-    env_file:
-      - .env
     environment:
       DATABASE_URL: postgresql+psycopg://fnip:fnip@db:5432/fnip
+      APIFY_TOKEN: ${APIFY_TOKEN:-}
+      APIFY_ACTOR_ID: ${APIFY_ACTOR_ID:-vamsi-krishna/stock-market-news-collector}
+      APIFY_TIMEOUT_SECS: ${APIFY_TIMEOUT_SECS:-300}
+      APIFY_MAX_RETRIES: ${APIFY_MAX_RETRIES:-3}
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       db:
         condition: service_healthy
