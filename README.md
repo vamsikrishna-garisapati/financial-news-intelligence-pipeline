@@ -47,7 +47,7 @@ flowchart LR
 
 - Trigger Apify Actor runs with documented inputs only
 - Normalize, validate, and classify news articles
-- Deduplicate by canonical URL (Actor `dedupeKey`) with fingerprint fallback
+- Deduplicate by canonical URL (Actor `dedupeKey`) with fingerprint fallback; URLs strip `www.`, default ports, tracking params, and sort query keys
 - Persist articles, companies, and collection-run metadata in PostgreSQL
 - Search/filter news and query analytics endpoints
 - Docker Compose deployment with Alembic migrations

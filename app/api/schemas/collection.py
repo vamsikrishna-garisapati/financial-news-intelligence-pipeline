@@ -119,6 +119,8 @@ class CollectionRunResponse(BaseModel):
     items_inserted: int
     items_duplicated: int
     items_invalid: int
+    actor_output: dict[str, Any] | None = None
+    processing_errors: list[str] = Field(default_factory=list)
     error_message: str | None = None
     attempt_count: int = 0
     max_attempts: int = 3

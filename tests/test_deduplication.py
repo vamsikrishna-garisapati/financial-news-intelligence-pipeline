@@ -12,7 +12,7 @@ from app.services.deduplication import (
 
 def test_canonicalize_url_strips_tracking_and_normalizes() -> None:
     url = "https://WWW.Example.com/news/story/?utm_source=rss&id=1#section"
-    assert canonicalize_url(url) == "https://www.example.com/news/story?id=1"
+    assert canonicalize_url(url) == "https://example.com/news/story?id=1"
 
 
 def test_canonicalize_url_rejects_invalid() -> None:

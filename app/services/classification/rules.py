@@ -93,6 +93,8 @@ KEYWORD_RULES: list[tuple[NewsCategory, tuple[str, ...]]] = [
 
 
 class RuleBasedClassifier(Classifier):
+    method = "rules"
+
     def classify(
         self,
         *,

@@ -36,6 +36,7 @@ class ActorRunResult:
     status: str
     items: list[dict[str, Any]]
     actor_run_status: str | None
+    actor_output: dict[str, Any] | None = None
 
 
 def _run_field(run: Any, *names: str) -> Any:
@@ -167,7 +168,10 @@ class ApifyNewsClient:
         if dataset_id:
             items = list(self._client.dataset(dataset_id).iterate_items())
 
-        actor_run_status = self._read_actor_run_status(kv_store_id)
+        actor_output = self._read_actor_output(kv_store_id)
+        actor_run_status = None
+        if isinstance(actor_output, dict) and actor_output.get("runStatus") is not None:
+            actor_run_status = str(actor_output.get("runStatus"))
         return ActorRunResult(
             run_id=handle.run_id,
             dataset_id=dataset_id,
@@ -175,6 +179,7 @@ class ApifyNewsClient:
             status=handle.status,
             items=items,
             actor_run_status=actor_run_status,
+            actor_output=actor_output if isinstance(actor_output, dict) else None,
         )
 
     def run_actor(self, run_input: dict[str, Any]) -> ActorRunResult:
@@ -183,7 +188,8 @@ class ApifyNewsClient:
         finished = self.wait_for_run(started.run_id)
         return self.fetch_run_result(finished)
 
-    def _read_actor_run_status(self, kv_store_id: str | None) -> str | None:
+    def _read_actor_output(self, kv_store_id: str | None) -> dict[str, Any] | None:
+        """Return the raw Apify key-value OUTPUT record value when it is an object."""
         if not kv_store_id:
             return None
         try:
@@ -195,6 +201,5 @@ class ApifyNewsClient:
             return None
         value = record.get("value") if isinstance(record, dict) else getattr(record, "value", None)
         if isinstance(value, dict):
-            status = value.get("runStatus")
-            return str(status) if status is not None else None
+            return dict(value)
         return None

@@ -12,6 +12,10 @@ class ClassificationService:
     def __init__(self, classifier: Classifier | None = None) -> None:
         self.classifier = classifier or RuleBasedClassifier()
 
+    @property
+    def method(self) -> str:
+        return getattr(self.classifier, "method", "unknown")
+
     def classify_article(
         self,
         *,

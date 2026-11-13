@@ -43,6 +43,8 @@ class ArticleDetail(ArticleSummary):
     fetched_at: datetime
     full_text: str | None = None
     actor_event_types: list[str] = Field(default_factory=list)
+    classification_method: str = "rules"
+    processing_error: str | None = None
     sentiment_score: float | None = Field(
         default=None,
         description="Best-effort Actor score only; not investment advice.",

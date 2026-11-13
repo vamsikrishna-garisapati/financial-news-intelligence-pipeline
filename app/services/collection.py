@@ -129,6 +129,8 @@ class CollectionService:
                 items_inserted=inserted,
                 items_duplicated=duplicated,
                 items_invalid=len(errors),
+                actor_output=result.actor_output,
+                processing_errors=errors,
             )
             logger.info(
                 "Collection run %s succeeded fetched=%s inserted=%s duplicated=%s invalid=%s",

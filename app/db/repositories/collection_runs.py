@@ -187,6 +187,8 @@ class CollectionRunRepository:
         items_inserted: int,
         items_duplicated: int,
         items_invalid: int,
+        actor_output: dict[str, Any] | None = None,
+        processing_errors: list[str] | None = None,
     ) -> CollectionRun | None:
         run = self.get(run_id)
         if run is None:
@@ -200,6 +202,8 @@ class CollectionRunRepository:
         run.items_inserted = items_inserted
         run.items_duplicated = items_duplicated
         run.items_invalid = items_invalid
+        run.actor_output = actor_output
+        run.processing_errors = list(processing_errors or [])
         run.finished_at = now
         run.duration_ms = self._duration_ms(run, now)
         run.next_attempt_at = None

@@ -17,6 +17,8 @@ class NewsCategory(StrEnum):
 
 
 class Classifier(ABC):
+    method: str = "unknown"
+
     @abstractmethod
     def classify(
         self,
