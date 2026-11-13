@@ -7,7 +7,9 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.config import get_settings
 
 
 class FeedPreset(StrEnum):
@@ -28,11 +30,11 @@ class CollectionRunCreate(BaseModel):
     )
     tickers: list[str] = Field(default_factory=list)
     companies: list[str] = Field(default_factory=list)
-    search_queries: list[str] = Field(default_factory=list, alias="searchQueries", max_length=10)
+    search_queries: list[str] = Field(default_factory=list, alias="searchQueries")
     search_language: str = Field(default="en", alias="searchLanguage", pattern=r"^[a-zA-Z]{2}$")
     search_country: str = Field(default="US", alias="searchCountry", pattern=r"^[a-zA-Z]{2}$")
-    hours_back: int = Field(default=24, alias="hoursBack", ge=0, le=720)
-    max_items: int = Field(default=50, alias="maxItems", ge=1, le=500)
+    hours_back: int = Field(default=24, alias="hoursBack", ge=0)
+    max_items: int = Field(default=50, alias="maxItems", ge=1)
     only_new_articles: bool = Field(default=False, alias="onlyNewArticles")
     enrich_articles: bool = Field(default=True, alias="enrichArticles")
     include_full_text: bool = Field(default=False, alias="includeFullText")
@@ -46,9 +48,43 @@ class CollectionRunCreate(BaseModel):
     @field_validator("tickers")
     @classmethod
     def normalize_tickers(cls, value: list[str]) -> list[str]:
-        if len(value) > 20:
-            raise ValueError("tickers supports a maximum of 20 symbols")
         return [ticker.strip().upper() for ticker in value if ticker.strip()]
+
+    @field_validator("companies")
+    @classmethod
+    def normalize_companies(cls, value: list[str]) -> list[str]:
+        return [company.strip() for company in value if company.strip()]
+
+    @field_validator("search_queries")
+    @classmethod
+    def normalize_search_queries(cls, value: list[str]) -> list[str]:
+        return [query.strip() for query in value if query.strip()]
+
+    @model_validator(mode="after")
+    def enforce_configured_limits(self) -> CollectionRunCreate:
+        settings = get_settings()
+        if self.max_items > settings.collection_max_items:
+            raise ValueError(
+                f"maxItems exceeds configured limit ({settings.collection_max_items})"
+            )
+        if len(self.tickers) > settings.collection_max_tickers:
+            raise ValueError(
+                f"tickers supports a maximum of {settings.collection_max_tickers} symbols"
+            )
+        if len(self.companies) > settings.collection_max_companies:
+            raise ValueError(
+                f"companies supports a maximum of {settings.collection_max_companies} entries"
+            )
+        if len(self.search_queries) > settings.collection_max_search_queries:
+            raise ValueError(
+                "searchQueries supports a maximum of "
+                f"{settings.collection_max_search_queries} entries"
+            )
+        if self.hours_back > settings.collection_max_hours_back:
+            raise ValueError(
+                f"hoursBack exceeds configured limit ({settings.collection_max_hours_back})"
+            )
+        return self
 
     def to_actor_input(self) -> dict[str, Any]:
         payload: dict[str, Any] = {

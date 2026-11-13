@@ -20,10 +20,13 @@ does not generate trading recommendations.
 
 ## Security and cost notes
 
+- Self-hosted only: use **your own** `APIFY_TOKEN` and PostgreSQL. No accounts or hosted backend.
 - Never commit `APIFY_TOKEN`, `.env`, or other secrets. See [SECURITY.md](SECURITY.md).
 - Live Apify collection is **pay-per-event** (roughly ~$0.0025/article on the free tier). Keep `maxItems` small while testing.
 - Local Docker Postgres uses demo credentials `fnip` / `fnip` — local development only.
-- The HTTP API is **unauthenticated**. Do not expose it on a public network without your own auth and TLS.
+- The HTTP API has **no built-in user auth** (local MVP). Bind to localhost for development.
+- If you expose the API publicly, you must add **authentication**, **rate limiting**, **HTTPS**, and **access controls** yourself — see [SECURITY.md](SECURITY.md).
+- CORS defaults to local frontend origins only (`CORS_ORIGINS`). Do not use `*` in production.
 
 ## Architecture
 
@@ -98,7 +101,18 @@ uv sync
 
 | Variable | Default | Description |
 |---|---|---|
-| `APP_ENV` | `development` | Application environment label |
+| `APP_ENV` | `development` | Application environment label (`production` strips CORS `*`) |
+| `CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated allowed browser origins |
+| `COLLECTION_MAX_ITEMS` | `500` | Max `maxItems` per collection request |
+| `COLLECTION_MAX_TICKERS` | `20` | Max tickers per collection request |
+| `COLLECTION_MAX_COMPANIES` | `20` | Max companies per collection request |
+| `COLLECTION_MAX_SEARCH_QUERIES` | `10` | Max search queries per collection request |
+| `COLLECTION_MAX_HOURS_BACK` | `720` | Max `hoursBack` per collection request |
+| `JOB_WORKER_ENABLED` | `true` | In-process Postgres job worker |
+| `JOB_POLL_INTERVAL_SECS` | `2` | Job poll interval |
+| `JOB_LEASE_SECONDS` | `900` | Stale lease timeout for abandoned jobs |
+| `JOB_MAX_ATTEMPTS` | `3` | Max attempts per collection run |
+| `JOB_RETRY_DELAY_SECS` | `30` | Delay before retrying a failed run |
 | `LOG_LEVEL` | `INFO` | Logging level |
 | `DATABASE_URL` | `postgresql+psycopg://fnip:fnip@localhost:5433/fnip` | SQLAlchemy URL (host port **5433**, localhost-bound) |
 | `APIFY_TOKEN` | _(empty)_ | Apify API token (required for live collection) |
@@ -292,6 +306,7 @@ Tests mock Apify responses and **never** execute paid Actor runs.
   run stuck in `running`.
 - Google News links may be redirect URLs; original URLs are preserved.
 - Without `APIFY_TOKEN`, the API starts but collection runs fail with a clear error.
+- This MVP has no user accounts; public exposure requires your own auth/rate limits/TLS (see SECURITY.md).
 - Actor RSS `categories` are kept in `raw_payload`; pipeline categories are separate.
 
 ## Troubleshooting
