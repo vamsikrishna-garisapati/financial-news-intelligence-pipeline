@@ -84,6 +84,9 @@ class CollectionRunResponse(BaseModel):
     items_duplicated: int
     items_invalid: int
     error_message: str | None = None
+    attempt_count: int = 0
+    max_attempts: int = 3
+    duration_ms: int | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
     created_at: datetime

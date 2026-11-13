@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     apify_timeout_secs: int = 300
     apify_max_retries: int = 3
 
+    # Postgres-backed collection job worker (in-process poller)
+    job_worker_enabled: bool = True
+    job_poll_interval_secs: float = 2.0
+    job_lease_seconds: int = 900
+    job_max_attempts: int = 3
+    job_retry_delay_secs: int = 30
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -29,6 +29,11 @@ services:
       APIFY_MAX_RETRIES: ${APIFY_MAX_RETRIES:-3}
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      JOB_WORKER_ENABLED: ${JOB_WORKER_ENABLED:-true}
+      JOB_POLL_INTERVAL_SECS: ${JOB_POLL_INTERVAL_SECS:-2}
+      JOB_LEASE_SECONDS: ${JOB_LEASE_SECONDS:-900}
+      JOB_MAX_ATTEMPTS: ${JOB_MAX_ATTEMPTS:-3}
+      JOB_RETRY_DELAY_SECS: ${JOB_RETRY_DELAY_SECS:-30}
     depends_on:
       db:
         condition: service_healthy

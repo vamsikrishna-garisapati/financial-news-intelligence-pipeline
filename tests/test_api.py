@@ -8,11 +8,10 @@ from collections.abc import Generator
 from unittest.mock import MagicMock
 
 from app.api.deps import get_session
-from app.api.routes.collection_runs import get_collection_scheduler
+from app.api.routes.collection_runs import get_collection_notifier, get_collection_scheduler
 from app.integrations.apify import ApifyIntegrationError
 from app.main import create_app
 from app.services.collection import CollectionService
-from fastapi import BackgroundTasks
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -99,18 +98,22 @@ def test_validation_error_on_bad_input(client: TestClient) -> None:
 
 def test_collection_run_apify_failure(db_session: Session) -> None:
     failing = MagicMock()
-    failing.run_actor.side_effect = ApifyIntegrationError("boom")
+    failing.start_run.side_effect = ApifyIntegrationError("boom")
 
     app = create_app()
 
     def _override_db() -> Generator[Session, None, None]:
         yield db_session
 
-    def _inline_scheduler(run_id: uuid.UUID, _background_tasks: BackgroundTasks) -> None:
-        CollectionService(db_session, apify_client=failing).execute_run(run_id)
+    def _inline_notifier(run_id: uuid.UUID) -> None:
+        CollectionService(db_session, apify_client=failing).process_run(
+            run_id,
+            lock_owner="test-inline",
+        )
 
     app.dependency_overrides[get_session] = _override_db
-    app.dependency_overrides[get_collection_scheduler] = lambda: _inline_scheduler
+    app.dependency_overrides[get_collection_notifier] = lambda: _inline_notifier
+    app.dependency_overrides[get_collection_scheduler] = lambda: _inline_notifier
 
     with TestClient(app) as client:
         create = client.post("/collection-runs", json={"feedPreset": "us_markets", "maxItems": 1})

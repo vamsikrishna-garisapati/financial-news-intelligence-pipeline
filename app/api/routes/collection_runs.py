@@ -5,24 +5,29 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_session
 from app.api.schemas.collection import CollectionRunCreate, CollectionRunResponse
-from app.services.collection import CollectionService, run_collection_in_background
+from app.services.collection import CollectionService
 
 router = APIRouter()
 
-ScheduleCollection = Callable[[uuid.UUID, BackgroundTasks], None]
+NotifyCollection = Callable[[uuid.UUID], None]
 
 
-def schedule_collection_run(run_id: uuid.UUID, background_tasks: BackgroundTasks) -> None:
-    background_tasks.add_task(run_collection_in_background, run_id)
+def notify_collection_run(_run_id: uuid.UUID) -> None:
+    """Default: no-op. The in-process Postgres job worker claims pending runs."""
 
 
-def get_collection_scheduler() -> ScheduleCollection:
-    return schedule_collection_run
+def get_collection_notifier() -> NotifyCollection:
+    return notify_collection_run
+
+
+# Backward-compatible alias used by older tests/docs.
+def get_collection_scheduler() -> NotifyCollection:
+    return notify_collection_run
 
 
 @router.post(
@@ -32,14 +37,13 @@ def get_collection_scheduler() -> ScheduleCollection:
 )
 def create_collection_run(
     payload: CollectionRunCreate,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_session),
-    schedule: ScheduleCollection = Depends(get_collection_scheduler),
+    notify: NotifyCollection = Depends(get_collection_notifier),
 ) -> CollectionRunResponse:
     service = CollectionService(db)
     run = service.create_run(payload.to_actor_input())
-    schedule(run.id, background_tasks)
-    # Re-load in case an inline/test scheduler already finished the run.
+    notify(run.id)
+    # Re-load in case an inline/test notifier already finished the run.
     refreshed = service.get_run(run.id) or run
     return CollectionRunResponse.model_validate(refreshed)
 

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -13,6 +16,32 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app import __version__
 from app.api.routes import api_router
 from app.config import get_settings
+from app.services.job_worker import job_worker_loop
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    stop_event = asyncio.Event()
+    worker_task: asyncio.Task[None] | None = None
+    if settings.job_worker_enabled:
+        worker_task = asyncio.create_task(
+            job_worker_loop(stop_event, settings=settings),
+            name="collection-job-worker",
+        )
+    try:
+        yield
+    finally:
+        stop_event.set()
+        if worker_task is not None:
+            try:
+                await asyncio.wait_for(worker_task, timeout=settings.job_poll_interval_secs + 5)
+            except TimeoutError:
+                worker_task.cancel()
+                try:
+                    await worker_task
+                except asyncio.CancelledError:
+                    pass
 
 
 def create_app() -> FastAPI:
@@ -27,6 +56,7 @@ def create_app() -> FastAPI:
             "store them in PostgreSQL, and expose search/analytics APIs. "
             "Sentiment and categories are best-effort labels, not investment advice."
         ),
+        lifespan=lifespan,
     )
 
     @app.exception_handler(StarletteHTTPException)
