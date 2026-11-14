@@ -18,6 +18,8 @@ class AIClassifier(Classifier):
     pipeline uses RuleBasedClassifier instead.
     """
 
+    method = "ai_stub"
+
     def __init__(self, *, enabled: bool = False) -> None:
         self.enabled = enabled
 

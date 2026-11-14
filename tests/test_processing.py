@@ -13,7 +13,8 @@ def test_normalize_valid_article(sample_articles: list[dict[str, Any]]) -> None:
     processor = ArticleProcessor()
     article = processor.normalize(sample_articles[1])
     assert article.headline.startswith("Apple reports")
-    assert article.canonical_url == "https://www.cnbc.com/2026/10/09/apple-earnings.html"
+    assert article.canonical_url == "https://cnbc.com/2026/10/09/apple-earnings.html"
+    assert article.classification_method == "rules"
     assert "earnings" in article.categories
     assert article.companies[0].ticker == "AAPL"
     assert article.sentiment_label == "positive"

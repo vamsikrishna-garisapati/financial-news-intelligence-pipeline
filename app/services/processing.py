@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -9,7 +11,12 @@ from typing import Any
 from app.services.classification.service import ClassificationService
 from app.services.deduplication import resolve_dedupe_keys
 
+logger = logging.getLogger(__name__)
+
 REQUIRED_FIELDS = ("headline", "articleLink", "source", "fetchedAt")
+
+# Uppercase ticker symbols: letters first, then alnum / . / - up to 16 chars total.
+TICKER_PATTERN = re.compile(r"^[A-Z][A-Z0-9.\-]{0,15}$")
 
 
 class ArticleValidationError(ValueError):
@@ -41,10 +48,12 @@ class NormalizedArticle:
     full_text: str | None = None
     actor_event_types: list[str] = field(default_factory=list)
     categories: list[str] = field(default_factory=list)
+    classification_method: str = "rules"
     sentiment_score: float | None = None
     sentiment_label: str | None = None
     companies: list[CompanyRef] = field(default_factory=list)
     tickers: list[str] = field(default_factory=list)
+    processing_error: str | None = None
     raw_payload: dict[str, Any] = field(default_factory=dict)
 
 
@@ -72,6 +81,10 @@ def parse_datetime(value: Any) -> datetime | None:
     raise ArticleValidationError(f"Unsupported datetime value: {value!r}")
 
 
+def is_valid_ticker(ticker: str) -> bool:
+    return bool(TICKER_PATTERN.fullmatch(ticker))
+
+
 def _as_str_list(value: Any) -> list[str]:
     if value is None:
         return []
@@ -80,8 +93,28 @@ def _as_str_list(value: Any) -> list[str]:
     return [str(item).strip() for item in value if str(item).strip()]
 
 
-def _company_refs(item: dict[str, Any], tickers: list[str]) -> list[CompanyRef]:
+def _validate_tickers(raw_tickers: list[str]) -> tuple[list[str], list[str]]:
+    valid: list[str] = []
+    warnings: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_tickers:
+        ticker = raw.upper()
+        if not is_valid_ticker(ticker):
+            warnings.append(f"invalid ticker skipped: {raw!r}")
+            continue
+        if ticker in seen:
+            continue
+        seen.add(ticker)
+        valid.append(ticker)
+    return valid, warnings
+
+
+def _company_refs(
+    item: dict[str, Any],
+    tickers: list[str],
+) -> tuple[list[CompanyRef], list[str]]:
     refs: dict[str, CompanyRef] = {}
+    warnings: list[str] = []
     details = item.get("companyDetails") or []
     if details and not isinstance(details, list):
         raise ArticleValidationError("companyDetails must be a list")
@@ -92,18 +125,40 @@ def _company_refs(item: dict[str, Any], tickers: list[str]) -> list[CompanyRef]:
         ticker = str(detail.get("ticker") or "").strip().upper()
         if not ticker:
             continue
+        if not is_valid_ticker(ticker):
+            warnings.append(f"invalid companyDetails ticker skipped: {ticker!r}")
+            continue
+        name = str(detail["name"]).strip() if detail.get("name") else None
+        exchange = str(detail["exchange"]).strip() if detail.get("exchange") else None
+        sector = str(detail["sector"]).strip() if detail.get("sector") else None
+        existing = refs.get(ticker)
+        if existing is not None:
+            if name and existing.name and name != existing.name:
+                warnings.append(
+                    f"companyDetails name conflict for {ticker}: "
+                    f"{existing.name!r} vs {name!r}"
+                )
+            # Keep first non-empty metadata; fill blanks only.
+            refs[ticker] = CompanyRef(
+                ticker=ticker,
+                name=existing.name or name,
+                exchange=existing.exchange or exchange,
+                sector=existing.sector or sector,
+            )
+            continue
         refs[ticker] = CompanyRef(
             ticker=ticker,
-            name=(str(detail["name"]).strip() if detail.get("name") else None),
-            exchange=(str(detail["exchange"]).strip() if detail.get("exchange") else None),
-            sector=(str(detail["sector"]).strip() if detail.get("sector") else None),
+            name=name,
+            exchange=exchange,
+            sector=sector,
         )
 
     for ticker in tickers:
-        key = ticker.upper()
-        refs.setdefault(key, CompanyRef(ticker=key))
+        refs.setdefault(ticker, CompanyRef(ticker=ticker))
 
-    return list(refs.values())
+    # Drop company refs whose ticker was never validated into tickers list and is invalid
+    # (already filtered). Keep ticker-only refs for valid tickers.
+    return list(refs.values()), warnings
 
 
 class ArticleProcessor:
@@ -125,7 +180,15 @@ class ArticleProcessor:
         published_at = parse_datetime(item.get("publishedDate"))
         summary = str(item["summary"]).strip() if item.get("summary") is not None else None
         actor_event_types = _as_str_list(item.get("eventTypes"))
-        tickers = [t.upper() for t in _as_str_list(item.get("tickers"))]
+        tickers, ticker_warnings = _validate_tickers(_as_str_list(item.get("tickers")))
+        companies, company_warnings = _company_refs(item, tickers)
+        processing_warnings = [*ticker_warnings, *company_warnings]
+        if processing_warnings:
+            logger.warning(
+                "Article processing warnings for %r: %s",
+                headline[:80],
+                processing_warnings,
+            )
 
         canonical_url, fingerprint = resolve_dedupe_keys(
             article_link=original_url,
@@ -161,10 +224,12 @@ class ArticleProcessor:
             full_text=str(item["fullText"]) if item.get("fullText") else None,
             actor_event_types=actor_event_types,
             categories=categories,
+            classification_method=self.classification.method,
             sentiment_score=sentiment_score,
             sentiment_label=str(item["sentimentLabel"]) if item.get("sentimentLabel") else None,
-            companies=_company_refs(item, tickers),
+            companies=companies,
             tickers=tickers,
+            processing_error="; ".join(processing_warnings) if processing_warnings else None,
             raw_payload=dict(item),
         )
 

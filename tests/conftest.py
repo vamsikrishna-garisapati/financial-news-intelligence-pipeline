@@ -11,17 +11,23 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+
+# Disable the in-process job worker for API tests; inline notifier executes runs.
+os.environ.setdefault("JOB_WORKER_ENABLED", "false")
+
 from app.api.deps import get_session
-from app.api.routes.collection_runs import get_collection_scheduler
+from app.api.routes.collection_runs import get_collection_notifier, get_collection_scheduler
+from app.config import get_settings
 from app.db.base import Base
-from app.integrations.apify import ActorRunResult
+from app.integrations.apify import ActorRunHandle, ActorRunResult
 from app.main import create_app
 from app.services.collection import CollectionService
-from fastapi import BackgroundTasks
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
+
+get_settings.cache_clear()
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -95,6 +101,15 @@ def mock_apify_result(sample_articles: list[dict[str, Any]]) -> ActorRunResult:
 @pytest.fixture
 def mock_apify_client(mock_apify_result: ActorRunResult) -> MagicMock:
     mock_client = MagicMock()
+    handle = ActorRunHandle(
+        run_id=mock_apify_result.run_id,
+        dataset_id=mock_apify_result.dataset_id,
+        key_value_store_id=mock_apify_result.key_value_store_id,
+        status=mock_apify_result.status,
+    )
+    mock_client.start_run.return_value = handle
+    mock_client.wait_for_run.return_value = handle
+    mock_client.fetch_run_result.return_value = mock_apify_result
     mock_client.run_actor.return_value = mock_apify_result
     return mock_client
 
@@ -109,11 +124,15 @@ def client(
     def _override_db() -> Generator[Session, None, None]:
         yield db_session
 
-    def _inline_scheduler(run_id: uuid.UUID, _background_tasks: BackgroundTasks) -> None:
-        CollectionService(db_session, apify_client=mock_apify_client).execute_run(run_id)
+    def _inline_notifier(run_id: uuid.UUID) -> None:
+        CollectionService(db_session, apify_client=mock_apify_client).process_run(
+            run_id,
+            lock_owner="test-inline",
+        )
 
     app.dependency_overrides[get_session] = _override_db
-    app.dependency_overrides[get_collection_scheduler] = lambda: _inline_scheduler
+    app.dependency_overrides[get_collection_notifier] = lambda: _inline_notifier
+    app.dependency_overrides[get_collection_scheduler] = lambda: _inline_notifier
 
     with TestClient(app) as test_client:
         yield test_client

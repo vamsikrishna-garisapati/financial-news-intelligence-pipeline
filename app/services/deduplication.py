@@ -19,14 +19,39 @@ TRACKING_QUERY_KEYS = {
 }
 
 
+def _strip_default_port(scheme: str, netloc: str) -> str:
+    if scheme == "http" and netloc.endswith(":80"):
+        return netloc[: -len(":80")]
+    if scheme == "https" and netloc.endswith(":443"):
+        return netloc[: -len(":443")]
+    return netloc
+
+
+def _strip_www(netloc: str) -> str:
+    """Strip a single leading www. host label. Other subdomains are preserved."""
+    host, sep, port = netloc.partition(":")
+    if host.startswith("www."):
+        host = host[4:]
+    return f"{host}{sep}{port}" if sep else host
+
+
 def canonicalize_url(url: str) -> str:
-    """Normalize a URL for deduplication (host case, fragment, tracking params)."""
+    """Normalize a URL for deduplication.
+
+    - lowercases scheme/host
+    - strips fragments
+    - collapses repeated slashes and trailing slash (except root)
+    - removes common tracking query params
+    - sorts remaining query params
+    - drops default ports (:80 / :443)
+    - strips a single leading ``www.`` label
+    """
     parsed = urlparse(url.strip())
     if not parsed.scheme or not parsed.netloc:
         raise ValueError(f"Invalid URL: {url!r}")
 
     scheme = parsed.scheme.lower()
-    netloc = parsed.netloc.lower()
+    netloc = _strip_www(_strip_default_port(scheme, parsed.netloc.lower()))
     path = re.sub(r"/{2,}", "/", parsed.path) or "/"
     if path != "/" and path.endswith("/"):
         path = path.rstrip("/")
@@ -39,6 +64,7 @@ def canonicalize_url(url: str) -> str:
         ):
             continue
         query_pairs.append((key, value))
+    query_pairs.sort(key=lambda pair: (pair[0].lower(), pair[1]))
     query = urlencode(query_pairs, doseq=True)
 
     return urlunparse((scheme, netloc, path, "", query, ""))
@@ -53,7 +79,10 @@ def content_fingerprint(
     source: str,
     published_at: datetime | date | None,
 ) -> str:
-    """Fallback fingerprint when URL-based dedupe is insufficient."""
+    """Fallback fingerprint when URL-based dedupe is insufficient.
+
+    Missing ``published_at`` uses the literal day token ``unknown``.
+    """
     if isinstance(published_at, datetime):
         day = published_at.date().isoformat()
     elif isinstance(published_at, date):

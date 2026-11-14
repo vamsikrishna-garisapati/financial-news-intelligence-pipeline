@@ -68,6 +68,8 @@ class ArticleRepository:
             full_text=normalized.full_text,
             actor_event_types=normalized.actor_event_types,
             categories=normalized.categories,
+            classification_method=normalized.classification_method,
+            processing_error=normalized.processing_error,
             sentiment_score=normalized.sentiment_score,
             sentiment_label=normalized.sentiment_label,
             raw_payload=normalized.raw_payload,
