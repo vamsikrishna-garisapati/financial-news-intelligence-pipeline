@@ -3,6 +3,7 @@ name = "financial-news-intelligence-pipeline"
 version = "0.1.0"
 description = "Collect, process, store, and search financial news via Apify and PostgreSQL."
 readme = "README.md"
+license = "MIT"
 authors = [
     { name = "Vamsi Krishna", email = "vamsikrishna.garisapati@gmail.com" }
 ]

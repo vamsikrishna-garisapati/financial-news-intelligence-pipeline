@@ -449,5 +449,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-No open-source license file is present yet. Treat the repository as source-available
-for demonstration until a `LICENSE` is added (planned: MIT).
+This project is licensed under the [MIT License](LICENSE).

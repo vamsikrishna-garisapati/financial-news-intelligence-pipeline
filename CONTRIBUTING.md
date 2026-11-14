@@ -38,6 +38,12 @@ uv run pytest --cov=app
 3. Update README / SECURITY docs when behavior or env vars change.
 4. Never commit secrets (`.env`, tokens, credentials, private keys).
 
+## Issues and pull requests
+
+- Use the GitHub issue templates for bugs and feature requests.
+- Security issues: follow [SECURITY.md](SECURITY.md) (private advisory), not public issues.
+- PRs should follow `.github/PULL_REQUEST_TEMPLATE.md` and wait for CI (Ruff, Alembic smoke, pytest coverage).
+
 ## Pull request process
 
 1. Fork the repository (or create a branch from `main`).
