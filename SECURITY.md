@@ -63,3 +63,8 @@ Before binding the API to a public interface you **must** configure, at minimum:
 - No built-in user accounts or API-key auth in this MVP.
 - No built-in request rate limiter (document and enforce at the edge if public).
 - Local Docker demo credentials are not production-safe.
+
+## Related docs
+
+- Operator hardening and troubleshooting: [README.md](README.md#production-deployment)
+- Local development auth stance: [README.md](README.md#api-authentication-this-mvp)

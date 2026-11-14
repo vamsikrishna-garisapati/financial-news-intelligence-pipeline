@@ -210,3 +210,84 @@ def test_claim_specific_run_for_inline_tests(db_session: Session) -> None:
     assert claimed is not None
     assert claimed.status == CollectionRunStatus.running
     assert repo.claim_next(lock_owner="other", max_attempts=3) is None
+
+
+def test_retry_after_failure_resumes_existing_apify_run(
+    db_session: Session,
+    sample_articles: list,
+) -> None:
+    mock_client = MagicMock()
+    mock_client.start_run.side_effect = ApifyIntegrationError("transient")
+    mock_client.wait_for_run.return_value = ActorRunHandle(
+        run_id="apify-retry-1",
+        dataset_id="dataset-retry",
+        key_value_store_id="kv-retry",
+        status="SUCCEEDED",
+    )
+    mock_client.fetch_run_result.return_value = ActorRunResult(
+        run_id="apify-retry-1",
+        dataset_id="dataset-retry",
+        key_value_store_id="kv-retry",
+        status="SUCCEEDED",
+        items=sample_articles,
+        actor_run_status="ok",
+    )
+
+    service = CollectionService(db_session, apify_client=mock_client)
+    created = service.create_run({"feedPreset": "us_markets", "maxItems": 5}, max_attempts=3)
+
+    # First attempt fails after Apify id was already persisted (crash mid-wait).
+    claimed = service.runs.claim_next(lock_owner="attempt-1", max_attempts=3)
+    assert claimed is not None
+    service.runs.set_apify_run(
+        created.id,
+        apify_run_id="apify-retry-1",
+        apify_dataset_id="dataset-retry",
+    )
+    mock_client.wait_for_run.side_effect = ApifyIntegrationError("wait failed")
+    service.execute_claimed_run(created.id)
+    failed = service.get_run(created.id)
+    assert failed is not None
+    assert failed.status == CollectionRunStatus.failed
+    assert failed.apify_run_id == "apify-retry-1"
+    assert failed.next_attempt_at is not None
+
+    # Second attempt resumes — never starts a new paid Actor run.
+    mock_client.wait_for_run.side_effect = None
+    mock_client.wait_for_run.return_value = ActorRunHandle(
+        run_id="apify-retry-1",
+        dataset_id="dataset-retry",
+        key_value_store_id="kv-retry",
+        status="SUCCEEDED",
+    )
+    failed.next_attempt_at = datetime.now(UTC) - timedelta(seconds=1)
+    db_session.commit()
+
+    claimed2 = service.runs.claim_next(lock_owner="attempt-2", max_attempts=3)
+    assert claimed2 is not None
+    service.execute_claimed_run(claimed2.id)
+
+    mock_client.start_run.assert_not_called()
+    finished = service.get_run(created.id)
+    assert finished is not None
+    assert finished.status == CollectionRunStatus.succeeded
+    assert finished.attempt_count == 2
+    assert finished.items_fetched == 3
+
+
+def test_final_failure_clears_retry_when_attempts_exhausted(db_session: Session) -> None:
+    mock_client = MagicMock()
+    mock_client.start_run.side_effect = ApifyIntegrationError("hard fail")
+
+    service = CollectionService(db_session, apify_client=mock_client)
+    created = service.create_run({"feedPreset": "us_markets", "maxItems": 1}, max_attempts=1)
+    claimed = service.runs.claim_next(lock_owner="final", max_attempts=1)
+    assert claimed is not None
+    service.execute_claimed_run(claimed.id)
+
+    failed = service.get_run(created.id)
+    assert failed is not None
+    assert failed.status == CollectionRunStatus.failed
+    assert failed.attempt_count == 1
+    assert failed.next_attempt_at is None
+    assert service.runs.claim_next(lock_owner="nope", max_attempts=1) is None

@@ -6,24 +6,36 @@ Thanks for your interest in improving this project.
 
 ```bash
 cp .env.example .env
+# optional: APIFY_TOKEN for manual live smoke tests only
+
 docker compose up -d db
 uv sync
 uv run alembic upgrade head
-uv run uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+
+API docs: http://localhost:8000/docs
+
+## Architecture reminders
+
+- Collection execution uses a **Postgres-backed in-process job worker** (leases + retries).
+  Do not reintroduce fire-and-forget `BackgroundTasks` for paid Apify runs.
+- Retries must **resume** an existing `apify_run_id` instead of starting a new Actor run.
+- Keep Apify Actor input/output fields aligned with the published Actor schema.
+  Do not invent Actor parameters or dataset fields.
+- The HTTP API has **no built-in auth** in this MVP; document any public-exposure changes in `SECURITY.md`.
 
 ## Before opening a pull request
 
-1. Keep Apify Actor input/output fields aligned with the published Actor schema.
-   Do not invent Actor parameters or dataset fields.
-2. Add or update tests for behavior changes.
-3. Run:
+1. Add or update tests for behavior changes (mock Apify; never start paid runs in CI).
+2. Run:
 
 ```bash
 uv run ruff check app tests
-uv run pytest
+uv run pytest --cov=app
 ```
 
+3. Update README / SECURITY docs when behavior or env vars change.
 4. Never commit secrets (`.env`, tokens, credentials, private keys).
 
 ## Pull request process
@@ -36,3 +48,4 @@ uv run pytest
 
 - Sentiment and category labels are best-effort triage signals, not investment advice.
 - Prefer simple, production-conscious changes over new infrastructure unless needed.
+- Redis/Celery is intentionally out of scope while Postgres leases remain sufficient.
