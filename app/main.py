@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -18,20 +17,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app import __version__
 from app.api.routes import api_router
 from app.config import get_settings
-from app.security.redact import RedactingFilter
+from app.observability.logging import configure_logging
 from app.services.job_worker import job_worker_loop
-
-
-def _configure_logging(level_name: str) -> None:
-    level = getattr(logging, level_name.upper(), logging.INFO)
-    root = logging.getLogger()
-    root.setLevel(level)
-    if not root.handlers:
-        logging.basicConfig(level=level)
-    redactor = RedactingFilter()
-    for handler in root.handlers:
-        handler.addFilter(redactor)
-        handler.setLevel(level)
 
 
 @asynccontextmanager
@@ -61,7 +48,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    _configure_logging(settings.log_level)
+    configure_logging(settings.log_level, log_format=settings.log_format)
 
     app = FastAPI(
         title="Financial News Intelligence Pipeline",

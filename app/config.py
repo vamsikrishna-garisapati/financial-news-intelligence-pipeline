@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     log_level: str = "INFO"
+    log_format: str = "json"  # json | text
     database_url: str = "postgresql+psycopg://fnip:fnip@localhost:5433/fnip"
 
     apify_token: str | None = None

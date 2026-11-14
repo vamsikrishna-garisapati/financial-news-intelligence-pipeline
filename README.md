@@ -114,6 +114,7 @@ uv sync
 | `JOB_MAX_ATTEMPTS` | `3` | Max attempts per collection run |
 | `JOB_RETRY_DELAY_SECS` | `30` | Delay before retrying a failed run |
 | `LOG_LEVEL` | `INFO` | Logging level |
+| `LOG_FORMAT` | `json` | Log format (`json` or `text`) |
 | `DATABASE_URL` | `postgresql+psycopg://fnip:fnip@localhost:5433/fnip` | SQLAlchemy URL (host port **5433**, localhost-bound) |
 | `APIFY_TOKEN` | _(empty)_ | Apify API token (required for live collection) |
 | `APIFY_ACTOR_ID` | `vamsi-krishna/stock-market-news-collector` | Actor to run |
