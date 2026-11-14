@@ -10,6 +10,7 @@ from collections.abc import Callable
 
 from app.config import Settings, get_settings
 from app.db.session import SessionLocal
+from app.observability.logging import log_event
 from app.services.collection import CollectionService
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,14 @@ def process_one_job(
 
         recovered = service.runs.recover_stale_leases(lease_seconds=settings.job_lease_seconds)
         if recovered:
-            logger.warning("Recovered %s abandoned collection job(s)", recovered)
+            log_event(
+                logger,
+                logging.WARNING,
+                event="job.recovered",
+                message="Recovered abandoned collection job lease(s)",
+                recovered_count=recovered,
+                lock_owner=owner,
+            )
 
         claimed = service.runs.claim_next(
             lock_owner=owner,
@@ -45,7 +53,16 @@ def process_one_job(
         if claimed is None:
             return False
 
-        logger.info("Claimed collection run %s attempt=%s", claimed.id, claimed.attempt_count)
+        log_event(
+            logger,
+            logging.INFO,
+            event="job.claimed",
+            message="Claimed collection run",
+            run_id=str(claimed.id),
+            attempt_count=claimed.attempt_count,
+            lock_owner=owner,
+            apify_run_id=claimed.apify_run_id,
+        )
         service.execute_claimed_run(claimed.id)
         return True
     finally:
@@ -60,11 +77,14 @@ async def job_worker_loop(
     """Poll Postgres for collection jobs until stop_event is set."""
     settings = settings or get_settings()
     owner = default_lock_owner()
-    logger.info(
-        "Collection job worker started owner=%s poll=%ss lease=%ss",
-        owner,
-        settings.job_poll_interval_secs,
-        settings.job_lease_seconds,
+    log_event(
+        logger,
+        logging.INFO,
+        event="job.worker_started",
+        message="Collection job worker started",
+        lock_owner=owner,
+        poll_interval_secs=settings.job_poll_interval_secs,
+        lease_seconds=settings.job_lease_seconds,
     )
     try:
         while not stop_event.is_set():
@@ -75,7 +95,14 @@ async def job_worker_loop(
                     lock_owner=owner,
                 )
             except Exception:  # noqa: BLE001
-                logger.exception("Collection job worker tick failed")
+                log_event(
+                    logger,
+                    logging.ERROR,
+                    event="job.worker_tick_failed",
+                    message="Collection job worker tick failed",
+                    lock_owner=owner,
+                    exc_info=True,
+                )
             try:
                 await asyncio.wait_for(
                     stop_event.wait(),
@@ -84,4 +111,10 @@ async def job_worker_loop(
             except TimeoutError:
                 continue
     finally:
-        logger.info("Collection job worker stopped owner=%s", owner)
+        log_event(
+            logger,
+            logging.INFO,
+            event="job.worker_stopped",
+            message="Collection job worker stopped",
+            lock_owner=owner,
+        )

@@ -150,3 +150,20 @@ def test_production_cors_drops_wildcard() -> None:
     settings = Settings(app_env="production", cors_origins="*,http://localhost:3000")
     assert "*" not in settings.cors_origin_list
     assert "http://localhost:3000" in settings.cors_origin_list
+
+
+def test_collection_limits_for_companies_and_search_queries(
+    clear_settings_cache,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("COLLECTION_MAX_COMPANIES", "1")
+    monkeypatch.setenv("COLLECTION_MAX_SEARCH_QUERIES", "1")
+    get_settings.cache_clear()
+
+    with pytest.raises(ValidationError, match="companies"):
+        CollectionRunCreate.model_validate({"companies": ["Acme", "Beta"]})
+
+    with pytest.raises(ValidationError, match="searchQueries"):
+        CollectionRunCreate.model_validate(
+            {"searchQueries": ["microsoft stock", "tesla stock"]}
+        )

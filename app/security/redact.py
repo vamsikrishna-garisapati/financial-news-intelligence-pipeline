@@ -8,6 +8,29 @@ import re
 from app.config import get_settings
 
 _REDACTED = "***"
+_SKIP_ATTRS = {
+    "name",
+    "msg",
+    "args",
+    "levelname",
+    "levelno",
+    "pathname",
+    "filename",
+    "module",
+    "exc_info",
+    "exc_text",
+    "stack_info",
+    "lineno",
+    "funcName",
+    "created",
+    "msecs",
+    "relativeCreated",
+    "thread",
+    "threadName",
+    "processName",
+    "process",
+    "taskName",
+}
 
 
 def redact_secrets(text: str, secrets: list[str | None]) -> str:
@@ -44,4 +67,9 @@ class RedactingFilter(logging.Filter):
                     redact_secrets(arg, secrets) if isinstance(arg, str) else arg
                     for arg in record.args
                 )
+        for key, value in list(record.__dict__.items()):
+            if key in _SKIP_ATTRS or key.startswith("_"):
+                continue
+            if isinstance(value, str):
+                setattr(record, key, redact_secrets(value, secrets))
         return True
