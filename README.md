@@ -453,5 +453,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 This project is licensed under the [MIT License](LICENSE).
 
-This project uses [Apify](https://apify.com?fpr=vamsiapify) for news collection
-(referral link).
+This project uses [Apify](https://apify.com?fpr=vamsiapify) for news collection.
