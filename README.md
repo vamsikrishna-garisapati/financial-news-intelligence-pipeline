@@ -1,6 +1,6 @@
 # Financial News Intelligence Pipeline
 
-[![CI](https://github.com/vamsikrishna-garisapati/financial-news-intelligence-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/vamsikrishna-garisapati/financial-news-intelligence-pipeline/actions/workflows/ci.yml)
+![CI](https://github.com/vamsikrishna-garisapati/financial-news-intelligence-pipeline/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 
 **Financial News Intelligence Pipeline** is a self-hosted Python project that
@@ -104,7 +104,7 @@ sequenceDiagram
 - Python 3.12+
 - [UV](https://docs.astral.sh/uv/)
 - Docker and Docker Compose
-- Apify account + API token for **live** collection runs
+- [Apify](https://apify.com?fpr=vamsiapify) account + API token for **live** collection runs
 
 ## Project layout
 
@@ -177,7 +177,9 @@ uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 ### Setting `APIFY_TOKEN`
 
-1. Create a token in [Apify Console → Integrations](https://console.apify.com/settings/integrations), **or**
+1. Create an [Apify account](https://apify.com?fpr=vamsiapify) if needed, then create a token in
+
+   [Apify Console → Integrations](https://console.apify.com/settings/integrations), **or**
 2. If you already ran `apify login`, copy that token into `.env` as `APIFY_TOKEN`.
 
 The Python Apify client needs an explicit token; it does not read the CLI keychain automatically.
@@ -256,7 +258,7 @@ There is **no application-level API key or user login**.
 
 - Local use: call the API directly on `http://localhost:8000`.
 - Shared/public use: put auth in front of the app (reverse proxy, API gateway, VPN).
-  Example nginx sketch (operator-managed, not shipped here):
+Example nginx sketch (operator-managed, not shipped here):
 
 ```nginx
 # Illustrative only — configure TLS and secrets yourself
@@ -409,9 +411,9 @@ structured logging, and Alembic revision chain checks. Coverage gate: **85%**.
 ## Assumptions
 
 - Collection jobs use an in-process Postgres lease worker; abandoned leases are requeued
-  or failed after max attempts; retries resume an existing `apify_run_id` when present.
+or failed after max attempts; retries resume an existing `apify_run_id` when present.
 - Yahoo ticker RSS feeds may return HTTP 429; `searchQueries` + `useTickerFeeds: false`
-  is often more reliable for live smoke tests.
+is often more reliable for live smoke tests.
 - Google News links may be redirect URLs; original URLs are preserved.
 - Without `APIFY_TOKEN`, the API starts but collection runs fail with a clear error.
 - This MVP has no user accounts; public exposure requires your own auth/rate limits/TLS.
@@ -450,3 +452,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+This project uses [Apify](https://apify.com?fpr=vamsiapify) for news collection
+(referral link).
